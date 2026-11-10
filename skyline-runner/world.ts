@@ -174,11 +174,16 @@ export const SKYLINE_BUILDINGS: readonly SkylineBuilding[] = [
 
 // Walkable street-level ground. A central slab plus four arms reach under each
 // district so the runner always has solid floor beneath the plaza and streets.
+// The arms are sized to OVERLAP the plaza's x[-26,26] / z edges rather than
+// meet them flush, so the plaza-to-district seams stay continuous and leave no
+// corner void a roaming player could fall through to killPlaneY. Tiles may
+// overlap each other and extend under building footprints freely; they are
+// floor only (wallRunnable:false, blocksGrapple:false).
 const GROUND_TILES: readonly ParkourPlatform[] = [
   { id: 'ground-plaza', bounds: bounds(-26, -4, -20, 26, GROUND_TOP, 40), wallRunnable: false, blocksGrapple: false },
   { id: 'ground-east', bounds: bounds(26, -4, -28, 52, GROUND_TOP, 24), wallRunnable: false, blocksGrapple: false },
   { id: 'ground-west', bounds: bounds(-52, -4, -30, -26, GROUND_TOP, 24), wallRunnable: false, blocksGrapple: false },
-  { id: 'ground-north', bounds: bounds(-20, -4, -78, 20, GROUND_TOP, -20), wallRunnable: false, blocksGrapple: false },
+  { id: 'ground-north', bounds: bounds(-26, -4, -78, 26, GROUND_TOP, -20), wallRunnable: false, blocksGrapple: false },
 ] as const
 
 export const ROOFTOP_PROPS: readonly RooftopProp[] = [
