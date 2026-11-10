@@ -49,6 +49,7 @@ function secureCity(
   progress: SkylineMissionProgress,
 ): SkylineMissionProgress {
   let current = collectAllCores(progress)
+  current = recordNpcConversation(current, 'lia')
   current = recordNpcConversation(current, 'nilo')
   current = deliverPrimeCores(current)
   current = defeatAllSentinels(current)
@@ -117,9 +118,8 @@ describe('Prime Runner mission logic', () => {
     const partial = collectPrimeCore(INITIAL_SKYLINE_MISSION_PROGRESS, 2)
     // Delivery is the relay mission's own gate, independent of other quests.
     expect(canDeliverPrimeCores(partial)).toBe(false)
-    expect(deliverPrimeCores(recordNpcConversation(partial, 'nilo'))).toBe(
-      recordNpcConversation(partial, 'nilo'),
-    )
+    const metNiloPartial = recordNpcConversation(partial, 'nilo')
+    expect(deliverPrimeCores(metNiloPartial)).toBe(metNiloPartial)
 
     const complete = collectAllCores(INITIAL_SKYLINE_MISSION_PROGRESS)
     expect(canDeliverPrimeCores(complete)).toBe(false)
