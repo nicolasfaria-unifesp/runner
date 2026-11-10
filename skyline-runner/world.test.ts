@@ -46,13 +46,16 @@ describe('skyline world', () => {
 
   it('keeps every major grapple transfer visible along the critical route', () => {
     const route = [
-      { origin: { x: 4.8, y: 2.7, z: 2.5 }, anchorId: 'anchor-triad' },
-      { origin: { x: -4.6, y: 4.9, z: -8.5 }, anchorId: 'anchor-relay' },
-      { origin: { x: -2.4, y: 7.2, z: -28.5 }, anchorId: 'anchor-four' },
-      { origin: { x: -4.6, y: 7.2, z: -37 }, anchorId: 'anchor-six' },
-      { origin: { x: 4.2, y: 8.7, z: -45 }, anchorId: 'anchor-nine' },
-      { origin: { x: -3.8, y: 10.3, z: -53 }, anchorId: 'anchor-ten' },
-      { origin: { x: 4.4, y: 11.8, z: -61 }, anchorId: 'anchor-apex' },
+      { origin: { x: 0, y: 1.1, z: 8 }, anchorId: 'anchor-binary' },
+      { origin: { x: 18, y: 5.8, z: 0 }, anchorId: 'anchor-triad' },
+      { origin: { x: 28, y: 11.5, z: 6 }, anchorId: 'anchor-east-spire' },
+      { origin: { x: -18, y: 9.2, z: 0 }, anchorId: 'anchor-relay' },
+      { origin: { x: -32, y: 8.1, z: 4 }, anchorId: 'anchor-west-cooler' },
+      { origin: { x: -9, y: 7.2, z: -34 }, anchorId: 'anchor-four' },
+      { origin: { x: 9, y: 8.7, z: -32 }, anchorId: 'anchor-six' },
+      { origin: { x: -11, y: 10.3, z: -44 }, anchorId: 'anchor-nine' },
+      { origin: { x: 11, y: 11.8, z: -46 }, anchorId: 'anchor-ten' },
+      { origin: { x: 9, y: 11.8, z: -50 }, anchorId: 'anchor-apex' },
     ] as const
 
     for (const step of route) {
