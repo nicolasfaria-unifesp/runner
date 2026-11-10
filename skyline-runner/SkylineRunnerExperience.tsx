@@ -1127,7 +1127,7 @@ function SkylineRunnerScene({ paused, quality, profile, reducedMotion, input, lo
       let near: RunnerNearby = null
       // Any mission giver on the open map is interactable; pick the closest one
       // within reach so overlapping districts resolve to a single prompt.
-      let nearestNpcDistance = SKYLINE_WORLD_BOUNDS.npcInteractionRadius
+      let nearestNpcDistance: number = SKYLINE_WORLD_BOUNDS.npcInteractionRadius
       for (const npcId of NPC_IDS) {
         const distance = tupleDistance(next.position, SKYLINE_NPCS[npcId].position)
         if (distance <= nearestNpcDistance) {
