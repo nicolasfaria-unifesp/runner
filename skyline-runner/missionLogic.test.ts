@@ -41,17 +41,26 @@ function defeatAllSentinels(
   )
 }
 
+/** Brings progress to the fully-ready-for-extraction state. */
+function secureCity(
+  progress: SkylineMissionProgress,
+): SkylineMissionProgress {
+  let current = collectAllCores(progress)
+  current = recordNpcConversation(current, 'nilo')
+  current = deliverPrimeCores(current)
+  current = defeatAllSentinels(current)
+  return current
+}
+
 describe('Prime Runner mission logic', () => {
-  it('reports every objective in campaign order through victory', () => {
+  it('surfaces the earliest unmet objective for the HUD through victory', () => {
     let progress = INITIAL_SKYLINE_MISSION_PROGRESS
     expect(getNextSkylineObjective(progress).id).toBe('talk-to-lia')
 
     progress = recordNpcConversation(progress, 'lia')
     expect(getNextSkylineObjective(progress).id).toBe('collect-prime-cores')
 
-    progress = collectPrimeCore(progress, 5)
-    progress = collectPrimeCore(progress, 2)
-    progress = collectPrimeCore(progress, 3)
+    progress = collectAllCores(progress)
     expect(getNextSkylineObjective(progress).id).toBe('deliver-cores-to-nilo')
 
     progress = recordNpcConversation(progress, 'nilo')
@@ -71,78 +80,71 @@ describe('Prime Runner mission logic', () => {
     expect(isSkylineMissionComplete(progress)).toBe(true)
   })
 
-  it('blocks collection and NILO until LIA starts the protocol', () => {
+  it('lets missions start in any order by roaming between givers', () => {
     const initial = INITIAL_SKYLINE_MISSION_PROGRESS
-    expect(collectPrimeCore(initial, 2)).toBe(initial)
-    expect(recordNpcConversation(initial, 'nilo')).toBe(initial)
-    expect(recordNpcConversation(initial, 'unknown')).toBe(initial)
 
-    const started = recordNpcConversation(initial, 'lia')
-    expect(started).not.toBe(initial)
-    expect(started.spokenNpcIds).toEqual(['lia'])
+    // No global chain: a player can meet DRAX or NILO before ever meeting LIA.
+    const metDrax = recordNpcConversation(initial, 'drax')
+    expect(metDrax.spokenNpcIds).toEqual(['drax'])
+    const metNiloFirst = recordNpcConversation(metDrax, 'nilo')
+    expect(metNiloFirst.spokenNpcIds).toEqual(['drax', 'nilo'])
+
+    // Conversations stay idempotent and unknown givers are rejected.
+    expect(recordNpcConversation(metNiloFirst, 'nilo')).toBe(metNiloFirst)
+    expect(recordNpcConversation(metNiloFirst, 'ghost')).toBe(metNiloFirst)
     expect(initial.spokenNpcIds).toEqual([])
   })
 
-  it('collects only 2, 3 and 5 once without mutating prior state', () => {
-    const started = recordNpcConversation(
-      INITIAL_SKYLINE_MISSION_PROGRESS,
-      'lia',
-    )
-    const withTwo = collectPrimeCore(started, 2)
+  it('collects cores by exploring without needing LIA first', () => {
+    const initial = INITIAL_SKYLINE_MISSION_PROGRESS
+
+    // Cores can be grabbed straight away while roaming the plaza pedestals.
+    const withTwo = collectPrimeCore(initial, 2)
     expect(withTwo.collectedPrimeCores).toEqual([2])
-    expect(started.collectedPrimeCores).toEqual([])
+    expect(initial.collectedPrimeCores).toEqual([])
     expect(collectPrimeCore(withTwo, 2)).toBe(withTwo)
     expect(collectPrimeCore(withTwo, 7 as SkylinePrimeCoreValue)).toBe(withTwo)
 
-    const complete = collectAllCores(started)
+    const complete = collectAllCores(initial)
     expect(hasAllPrimeCores(complete)).toBe(true)
     expect(new Set(complete.collectedPrimeCores)).toEqual(new Set([2, 3, 5]))
   })
 
-  it('requires the complete set and a conversation before delivery', () => {
-    const started = recordNpcConversation(
-      INITIAL_SKYLINE_MISSION_PROGRESS,
-      'lia',
+  it('requires the full set and a NILO conversation for the relay handoff only', () => {
+    const partial = collectPrimeCore(INITIAL_SKYLINE_MISSION_PROGRESS, 2)
+    // Delivery is the relay mission's own gate, independent of other quests.
+    expect(canDeliverPrimeCores(partial)).toBe(false)
+    expect(deliverPrimeCores(recordNpcConversation(partial, 'nilo'))).toBe(
+      recordNpcConversation(partial, 'nilo'),
     )
-    const partial = collectPrimeCore(started, 2)
-    expect(recordNpcConversation(partial, 'nilo')).toBe(partial)
-    expect(deliverPrimeCores(partial)).toBe(partial)
 
-    const complete = collectAllCores(started)
+    const complete = collectAllCores(INITIAL_SKYLINE_MISSION_PROGRESS)
     expect(canDeliverPrimeCores(complete)).toBe(false)
     const metNilo = recordNpcConversation(complete, 'nilo')
     expect(canDeliverPrimeCores(metNilo)).toBe(true)
     const delivered = deliverPrimeCores(metNilo)
     expect(delivered.coresDeliveredToNilo).toBe(true)
     expect(deliverPrimeCores(delivered)).toBe(delivered)
+    // Once sealed, no stray pickups register.
+    expect(collectPrimeCore(delivered, 2)).toBe(delivered)
   })
 
-  it('counts each known sentinel once and only after delivery', () => {
-    const blocked = recordSentinelDefeat(
-      INITIAL_SKYLINE_MISSION_PROGRESS,
-      'sentinel-four',
-    )
-    expect(blocked).toBe(INITIAL_SKYLINE_MISSION_PROGRESS)
+  it('clears sentinels independently and idempotently, rejecting unknown ids', () => {
+    const initial = INITIAL_SKYLINE_MISSION_PROGRESS
 
-    let ready = recordNpcConversation(
-      INITIAL_SKYLINE_MISSION_PROGRESS,
-      'lia',
-    )
-    ready = collectAllCores(ready)
-    ready = recordNpcConversation(ready, 'nilo')
-    ready = deliverPrimeCores(ready)
-
-    const firstKill = recordSentinelDefeat(ready, 'sentinel-four')
+    // The quarantine purge no longer waits on a global predecessor.
+    const firstKill = recordSentinelDefeat(initial, 'sentinel-four')
     expect(firstKill.defeatedSentinelIds).toEqual(['sentinel-four'])
     expect(recordSentinelDefeat(firstKill, 'sentinel-four')).toBe(firstKill)
     expect(recordSentinelDefeat(firstKill, 'missing-sentinel')).toBe(firstKill)
+    expect(initial.defeatedSentinelIds).toEqual([])
 
-    const cleared = defeatAllSentinels(ready)
+    const cleared = defeatAllSentinels(initial)
     expect(hasDefeatedAllSentinels(cleared)).toBe(true)
     expect(cleared.defeatedSentinelIds).toHaveLength(4)
   })
 
-  it('gates the Apex and beacon and treats repeated triggers idempotently', () => {
+  it('still gates the Apex mission behind a secured city, in any order', () => {
     const initial = INITIAL_SKYLINE_MISSION_PROGRESS
     expect(canReachApexSpire(initial)).toBe(false)
     expect(reachApexSpire(initial)).toBe(initial)
@@ -150,19 +152,32 @@ describe('Prime Runner mission logic', () => {
     expect(activateApexBeacon(initial)).toBe(initial)
     expect(isSkylineMissionComplete(initial)).toBe(false)
 
-    let ready = recordNpcConversation(initial, 'lia')
-    ready = collectAllCores(ready)
-    ready = recordNpcConversation(ready, 'nilo')
-    ready = deliverPrimeCores(ready)
-    ready = defeatAllSentinels(ready)
-    expect(canReachApexSpire(ready)).toBe(true)
+    // Clearing sentinels first then handling the cores still unlocks the Apex.
+    let roamed = defeatAllSentinels(initial)
+    expect(canReachApexSpire(roamed)).toBe(false)
+    roamed = secureCity(roamed)
+    expect(canReachApexSpire(roamed)).toBe(true)
 
-    const atApex = reachApexSpire(ready)
+    const atApex = reachApexSpire(roamed)
     expect(reachApexSpire(atApex)).toBe(atApex)
     expect(canActivateApexBeacon(atApex)).toBe(true)
 
     const complete = activateApexBeacon(atApex)
     expect(activateApexBeacon(complete)).toBe(complete)
     expect(isSkylineMissionComplete(complete)).toBe(true)
+  })
+
+  it('reaches completion regardless of which order the givers were met', () => {
+    // Meet VERA and DRAX before LIA, collect cores late: still completable.
+    let progress = recordNpcConversation(INITIAL_SKYLINE_MISSION_PROGRESS, 'vera')
+    progress = recordNpcConversation(progress, 'drax')
+    progress = defeatAllSentinels(progress)
+    progress = collectAllCores(progress)
+    progress = recordNpcConversation(progress, 'nilo')
+    progress = deliverPrimeCores(progress)
+    progress = recordNpcConversation(progress, 'lia')
+    progress = reachApexSpire(progress)
+    progress = activateApexBeacon(progress)
+    expect(isSkylineMissionComplete(progress)).toBe(true)
   })
 })

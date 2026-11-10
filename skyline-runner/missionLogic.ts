@@ -62,7 +62,11 @@ export function hasDefeatedAllSentinels(
   )
 }
 
-/** Records a conversation once and preserves strict campaign order. */
+/**
+ * Records a conversation with any giver once. Missions are discovered by
+ * roaming, so there is no global order between givers; only unknown ids and
+ * repeat conversations are rejected (idempotent).
+ */
 export function recordNpcConversation(
   progress: SkylineMissionProgress,
   npcId: SkylineNpcId | string,
@@ -71,25 +75,23 @@ export function recordNpcConversation(
     return progress
   }
 
-  const canSpeak = npcId === 'lia' || (
-    progress.spokenNpcIds.includes('lia') && hasAllPrimeCores(progress)
-  )
-  if (!canSpeak) return progress
-
   return {
     ...progress,
     spokenNpcIds: [...progress.spokenNpcIds, npcId],
   }
 }
 
-/** Collects each prime core at most once, after LIA has opened the mission. */
+/**
+ * Collects each prime core at most once. The cores can be found by exploring
+ * the plaza pedestals independently of which givers have been met; delivering
+ * the set to NILO seals the cache so no further pickups register.
+ */
 export function collectPrimeCore(
   progress: SkylineMissionProgress,
   value: SkylinePrimeCoreValue | number,
 ): SkylineMissionProgress {
   if (
     !isPrimeCoreValue(value)
-    || !progress.spokenNpcIds.includes('lia')
     || progress.coresDeliveredToNilo
     || progress.collectedPrimeCores.includes(value)
   ) return progress
@@ -100,6 +102,10 @@ export function collectPrimeCore(
   }
 }
 
+/**
+ * Delivery is the relay mission's own gate: it needs the complete 2/3/5 set and
+ * a conversation with NILO. It does not depend on any other mission's state.
+ */
 export function canDeliverPrimeCores(
   progress: SkylineMissionProgress,
 ): boolean {
@@ -116,13 +122,17 @@ export function deliverPrimeCores(
   return { ...progress, coresDeliveredToNilo: true }
 }
 
+/**
+ * Counts each known sentinel at most once. Sentinels belong to the quarantine
+ * mission and can be cleared independently of the other quests; unknown ids and
+ * repeats are rejected (idempotent).
+ */
 export function recordSentinelDefeat(
   progress: SkylineMissionProgress,
   sentinelId: SkylineSentinelId | string,
 ): SkylineMissionProgress {
   if (
     !isKnownSentinelId(sentinelId)
-    || !progress.coresDeliveredToNilo
     || progress.defeatedSentinelIds.includes(sentinelId)
   ) return progress
 
@@ -132,6 +142,11 @@ export function recordSentinelDefeat(
   }
 }
 
+/**
+ * The Apex mission's internal gate: the city must be secured first, i.e. the
+ * cores delivered and every sentinel cleared. Those prerequisites can be
+ * completed in any order while roaming.
+ */
 export function canReachApexSpire(
   progress: SkylineMissionProgress,
 ): boolean {
@@ -173,7 +188,13 @@ export function isSkylineMissionComplete(
     && canActivateApexBeacon(progress)
 }
 
-/** Returns the first unfinished stage, or the terminal victory objective. */
+/**
+ * Surfaces a single "next" objective for the legacy HUD track. It scans the
+ * protocol objectives in display order and returns the first one still
+ * outstanding, then the terminal victory objective. Because the progress model
+ * is no longer a forced chain, several of these can already be satisfiable at
+ * once; this simply picks the earliest unmet one to show.
+ */
 export function getNextSkylineObjective(
   progress: SkylineMissionProgress,
 ): SkylineObjective {

@@ -5,6 +5,7 @@ import type { QualityLevel } from '../../graphics/useQualitySettings'
 import QualityControl from '../../ui/QualityControl'
 import {
   SKYLINE_DIALOGUES,
+  SKYLINE_NPCS,
   SKYLINE_OBJECTIVE_ORDER,
   SKYLINE_PRIME_CORE_VALUES,
   SKYLINE_SENTINELS,
@@ -211,7 +212,9 @@ export default function SkylineRunnerHud({
   const line = activeDialogue
     ? SKYLINE_DIALOGUES[activeDialogue.id].lines[activeDialogue.lineIndex]
     : null
-  const speaker = line?.speaker === 'lia' ? 'LIA' : line?.speaker === 'nilo' ? 'NILO' : 'RUNNER 07'
+  const speaker = line && line.speaker !== 'runner'
+    ? SKYLINE_NPCS[line.speaker].name
+    : 'RUNNER 07'
   const prompt = nearby === 'npc:lia'
     ? 'FALAR COM LIA'
     : nearby === 'npc:nilo'
