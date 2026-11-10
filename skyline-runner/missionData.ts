@@ -112,8 +112,8 @@ export interface SkylineMission {
 
 export const SKYLINE_LOCATIONS = {
   runnerSpawn: [0, 1.1, 16] as SkylinePosition3D,
-  apexSpire: [0, 13.2, -71] as SkylinePosition3D,
-  apexBeacon: [0, 14.2, -76] as SkylinePosition3D,
+  apexSpire: [0, 13.2, -67] as SkylinePosition3D,
+  apexBeacon: [0, 14.2, -67] as SkylinePosition3D,
 } as const
 
 export const SKYLINE_NPCS: Readonly<Record<SkylineNpcId, SkylineNpc>> = {
@@ -121,7 +121,7 @@ export const SKYLINE_NPCS: Readonly<Record<SkylineNpcId, SkylineNpc>> = {
     id: 'lia',
     name: 'LIA',
     role: 'Operadora e corredora de telhados',
-    position: [-3.4, 1.1, 11.8],
+    position: [0, 1.1, 10],
     accent: '#59e3dd',
     dialogueIds: ['lia-briefing', 'lia-cores-online', 'apex-extraction'],
   },
@@ -129,7 +129,7 @@ export const SKYLINE_NPCS: Readonly<Record<SkylineNpcId, SkylineNpc>> = {
     id: 'nilo',
     name: 'NILO',
     role: 'Engenheiro do relay oeste',
-    position: [-22, 1.1, 6],
+    position: [-30, 1.1, 6],
     accent: '#f2c15c',
     dialogueIds: ['nilo-delivery', 'apex-extraction'],
   },
@@ -137,7 +137,7 @@ export const SKYLINE_NPCS: Readonly<Record<SkylineNpcId, SkylineNpc>> = {
     id: 'vera',
     name: 'VERA',
     role: 'Batedora do distrito leste',
-    position: [24, 1.1, 8],
+    position: [30, 1.1, 8],
     accent: '#8bd0ff',
     dialogueIds: ['vera-briefing', 'apex-extraction'],
   },
@@ -157,20 +157,20 @@ export const SKYLINE_PRIME_CORES: Readonly<
   2: {
     value: 2,
     label: 'Núcleo Binário',
-    position: [4.8, 2.7, 2.5],
-    clue: 'O único primo par repousa no pedestal da praça leste.',
+    position: [17, 6.1, -9],
+    clue: 'O único primo par repousa no pedestal binário, a leste da praça.',
   },
   3: {
     value: 3,
     label: 'Núcleo Tríade',
-    position: [-4.6, 4.9, -8.5],
-    clue: 'Três pulsa sobre o pedestal tríade, a oeste do arco.',
+    position: [-6, 8.6, -23],
+    clue: 'Três pulsa sobre o pedestal tríade, a noroeste rumo à quarentena.',
   },
   5: {
     value: 5,
     label: 'Núcleo Pentagonal',
-    position: [3.2, 7.2, -20],
-    clue: 'Cinco brilha no pedestal pentagonal, rumo ao norte.',
+    position: [6, 11.1, -23],
+    clue: 'Cinco brilha no pedestal pentagonal, mais ao norte e mais alto.',
   },
 }
 
@@ -182,28 +182,28 @@ export const SKYLINE_SENTINELS: Readonly<
     label: 'Sentinela 4',
     compositeNumber: 4,
     primeFactors: [2, 2],
-    position: [-4.6, 7.2, -37],
+    position: [-9, 7.2, -34],
   },
   'sentinel-six': {
     id: 'sentinel-six',
     label: 'Sentinela 6',
     compositeNumber: 6,
     primeFactors: [2, 3],
-    position: [4.2, 8.7, -45],
+    position: [7, 8.7, -40],
   },
   'sentinel-nine': {
     id: 'sentinel-nine',
     label: 'Sentinela 9',
     compositeNumber: 9,
     primeFactors: [3, 3],
-    position: [-3.8, 10.3, -53],
+    position: [-13, 10.3, -49],
   },
   'sentinel-ten': {
     id: 'sentinel-ten',
     label: 'Sentinela 10',
     compositeNumber: 10,
     primeFactors: [2, 5],
-    position: [4.4, 11.8, -61],
+    position: [9, 11.8, -51],
   },
 }
 
