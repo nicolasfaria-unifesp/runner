@@ -12,7 +12,10 @@ import {
   canReachApexSpire,
   collectPrimeCore,
   deliverPrimeCores,
+  getActiveSkylineMission,
   getNextSkylineObjective,
+  getObjectiveCompletion,
+  getSkylineMissionStates,
   hasAllPrimeCores,
   hasDefeatedAllSentinels,
   INITIAL_SKYLINE_MISSION_PROGRESS,
@@ -165,6 +168,44 @@ describe('Prime Runner mission logic', () => {
     const complete = activateApexBeacon(atApex)
     expect(activateApexBeacon(complete)).toBe(complete)
     expect(isSkylineMissionComplete(complete)).toBe(true)
+  })
+
+  it('projects progress onto the four discrete missions for the HUD', () => {
+    const initial = INITIAL_SKYLINE_MISSION_PROGRESS
+    const start = getSkylineMissionStates(initial)
+    expect(start.map((state) => state.id)).toEqual([
+      'prime-cache',
+      'relay-handoff',
+      'quarantine-purge',
+      'apex-extraction',
+    ])
+    expect(start.every((state) => !state.started && !state.complete)).toBe(true)
+    // The prime-cache mission owns the first tracked objective.
+    expect(getActiveSkylineMission(initial)?.id).toBe('prime-cache')
+
+    // Completing the cache mission flips it to done and advances the active one.
+    let progress = recordNpcConversation(initial, 'lia')
+    progress = collectAllCores(progress)
+    const cacheDone = getSkylineMissionStates(progress).find((state) => state.id === 'prime-cache')
+    expect(cacheDone).toMatchObject({ completedSteps: 2, totalSteps: 2, complete: true })
+    expect(getActiveSkylineMission(progress)?.id).toBe('relay-handoff')
+
+    // Partial combat progress marks the quarantine mission started, not done.
+    progress = recordNpcConversation(progress, 'nilo')
+    progress = deliverPrimeCores(progress)
+    progress = recordSentinelDefeat(progress, 'sentinel-four')
+    const purge = getSkylineMissionStates(progress).find((state) => state.id === 'quarantine-purge')
+    expect(purge).toMatchObject({ started: true, complete: false })
+    expect(getObjectiveCompletion(progress, 'defeat-composite-sentinels')).toMatchObject({
+      current: 1,
+      required: 4,
+      done: false,
+    })
+
+    // Securing the whole city completes every mission and clears the active slot.
+    const secured = activateApexBeacon(reachApexSpire(secureCity(initial)))
+    expect(getSkylineMissionStates(secured).every((state) => state.complete)).toBe(true)
+    expect(getActiveSkylineMission(secured)).toBeNull()
   })
 
   it('reaches completion regardless of which order the givers were met', () => {

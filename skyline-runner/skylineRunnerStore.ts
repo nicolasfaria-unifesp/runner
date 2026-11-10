@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand'
 
 import {
   SKYLINE_DIALOGUES,
+  SKYLINE_NPCS,
   SKYLINE_OBJECTIVES,
   SKYLINE_SENTINEL_IDS,
   SKYLINE_SENTINELS,
@@ -37,6 +38,18 @@ export type RunnerMovementState =
   | 'ESCALADA'
 
 export type RunnerNearby = `npc:${SkylineNpcId}` | 'beacon' | null
+
+/**
+ * The briefing a giver opens the first time the runner talks to them. Each one
+ * is the first dialogue id listed on that NPC in missionData, so new givers are
+ * picked up automatically as long as their first dialogue is their briefing.
+ */
+const NPC_BRIEFING_DIALOGUE: Readonly<Record<SkylineNpcId, SkylineDialogueId>> = (
+  Object.keys(SKYLINE_NPCS) as SkylineNpcId[]
+).reduce((map, id) => {
+  map[id] = SKYLINE_NPCS[id].dialogueIds[0]
+  return map
+}, {} as Record<SkylineNpcId, SkylineDialogueId>)
 
 export interface RunnerDialogueState {
   readonly id: SkylineDialogueId
@@ -225,24 +238,34 @@ export function createSkylineRunnerStore(now: () => number = Date.now): SkylineR
     interact: () => {
       const state = get()
       if (state.defeated || state.result || state.activeDialogue || !state.nearby) return false
-      if (state.nearby === 'npc:lia') {
-        if (state.mission.spokenNpcIds.includes('lia')) {
-          set({ toast: nextToast(state.toast, 'cyan', 'LIA // COMMS', 'Siga os marcadores da tríade prima.') })
+      if (state.nearby.startsWith('npc:')) {
+        const npcId = state.nearby.slice(4) as SkylineNpcId
+        // NILO is the one giver with a prerequisite: the full prime triad.
+        if (npcId === 'nilo') {
+          if (state.mission.coresDeliveredToNilo) {
+            set({ toast: nextToast(state.toast, 'amber', 'NILO // RELAY', 'As Sentinelas já estão vulneráveis ao seu pulso.') })
+            return true
+          }
+          if (state.mission.collectedPrimeCores.length < 3) {
+            set({ toast: nextToast(state.toast, 'amber', 'ASSINATURA INCOMPLETA', 'Nilo precisa dos núcleos 2, 3 e 5.') })
+            return false
+          }
+          set({ activeDialogue: { id: 'nilo-delivery', lineIndex: 0 }, controlsCaptured: false })
           return true
         }
-        set({ activeDialogue: { id: 'lia-briefing', lineIndex: 0 }, controlsCaptured: false })
-        return true
-      }
-      if (state.nearby === 'npc:nilo') {
-        if (state.mission.coresDeliveredToNilo) {
-          set({ toast: nextToast(state.toast, 'amber', 'NILO // RELAY', 'As Sentinelas já estão vulneráveis ao seu pulso.') })
+        // Every other giver briefs once; a repeat conversation just acks over comms.
+        if (state.mission.spokenNpcIds.includes(npcId)) {
+          set({
+            toast: nextToast(
+              state.toast,
+              'cyan',
+              `${SKYLINE_NPCS[npcId].name} // COMMS`,
+              getNextSkylineObjective(state.mission).detail,
+            ),
+          })
           return true
         }
-        if (state.mission.collectedPrimeCores.length < 3) {
-          set({ toast: nextToast(state.toast, 'amber', 'ASSINATURA INCOMPLETA', 'Nilo precisa dos núcleos 2, 3 e 5.') })
-          return false
-        }
-        set({ activeDialogue: { id: 'nilo-delivery', lineIndex: 0 }, controlsCaptured: false })
+        set({ activeDialogue: { id: NPC_BRIEFING_DIALOGUE[npcId], lineIndex: 0 }, controlsCaptured: false })
         return true
       }
       if (state.nearby === 'beacon') {
@@ -280,11 +303,17 @@ export function createSkylineRunnerStore(now: () => number = Date.now): SkylineR
       let toast = state.toast
       if (active.id === 'lia-briefing') {
         mission = recordNpcConversation(mission, 'lia')
-        toast = nextToast(toast, 'cyan', 'ROTA LIBERADA', 'Colete os núcleos 2, 3 e 5.')
+        toast = nextToast(toast, 'cyan', 'CACHE PRIMO ABERTO', 'Colete os núcleos 2, 3 e 5 pela cidade.')
       } else if (active.id === 'nilo-delivery') {
         mission = recordNpcConversation(mission, 'nilo')
         mission = deliverPrimeCores(mission)
         toast = nextToast(toast, 'amber', 'MAGIA PRIMA ATIVA', 'Use 2, 3 ou 5 para equipar; F dispara contra o fator correto.')
+      } else if (active.id === 'drax-briefing') {
+        mission = recordNpcConversation(mission, 'drax')
+        toast = nextToast(toast, 'amber', 'QUARENTENA MAPEADA', 'Fatore as Sentinelas 4, 6, 9 e 10 ao norte.')
+      } else if (active.id === 'vera-briefing') {
+        mission = recordNpcConversation(mission, 'vera')
+        toast = nextToast(toast, 'cyan', 'ROTA APEX MARCADA', 'Com a cidade segura, suba a Agulha e acenda o farol.')
       } else if (active.id === 'apex-extraction') {
         toast = nextToast(toast, 'cyan', 'EXTRAÇÃO PRONTA', 'Aproxime-se do farol e pressione E.')
       }

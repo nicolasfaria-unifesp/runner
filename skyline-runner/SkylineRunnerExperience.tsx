@@ -6,11 +6,14 @@ import type { QualityLevel, QualityProfile } from '../../graphics/useQualitySett
 import { SceneBoundary } from '../../ui/SceneBoundary'
 import {
   SKYLINE_LOCATIONS,
+  SKYLINE_MISSIONS,
   SKYLINE_NPCS,
   SKYLINE_PRIME_CORE_VALUES,
   SKYLINE_PRIME_CORES,
   SKYLINE_SENTINEL_IDS,
   SKYLINE_SENTINELS,
+  type SkylineNpcId,
+  type SkylineObjectiveId,
   type SkylinePrimeCoreValue,
   type SkylineSentinelId,
 } from './missionData'
@@ -38,6 +41,7 @@ import { createSkylineAudio, type SkylineAudioController } from './skylineAudio'
 import SkylineRunnerHud, { type TouchAction } from './SkylineRunnerHud'
 import {
   type RunnerMovementState,
+  type RunnerNearby,
   type SkylineRunnerResult,
   useSkylineRunnerStore,
 } from './skylineRunnerStore'
@@ -113,6 +117,19 @@ const GRAPPLE_SURFACE_OFFSET = .06
 const PRIME_AIM_ALIGNMENT = .97
 const TEMP_VECTOR = new THREE.Vector3()
 const GRAPPLE_OBSTACLES = SKYLINE_COLLIDERS.map((platform) => platform.bounds)
+const NPC_IDS = Object.keys(SKYLINE_NPCS) as readonly SkylineNpcId[]
+
+/**
+ * Maps the legacy single-chain objective back to the giver whose mission owns
+ * it, so the currently-tracked objective highlights the right NPC on the map
+ * regardless of which mission the player is pursuing.
+ */
+const OBJECTIVE_TO_GIVER: Partial<Record<SkylineObjectiveId, SkylineNpcId>> = Object
+  .values(SKYLINE_MISSIONS)
+  .reduce((map, mission) => {
+    for (const objectiveId of mission.objectiveIds) map[objectiveId] = mission.giver
+    return map
+  }, {} as Partial<Record<SkylineObjectiveId, SkylineNpcId>>)
 
 function cloneMotion(motion: PlayerMotion): PlayerMotion {
   return {
@@ -771,11 +788,16 @@ function SkylineRunnerScene({ paused, quality, profile, reducedMotion, input, lo
   const collectedCores = useMemo(() => new Set(mission.collectedPrimeCores), [mission.collectedPrimeCores])
   const defeatedSentinels = useMemo(() => new Set(mission.defeatedSentinelIds), [mission.defeatedSentinelIds])
   const objective = getNextSkylineObjective(mission)
-  const objectiveNpc = objective.id === 'talk-to-lia'
-    ? 'lia'
-    : objective.id === 'deliver-cores-to-nilo'
-      ? 'nilo'
-      : null
+  const trackedGiver = OBJECTIVE_TO_GIVER[objective.id] ?? null
+  // Flag the giver whenever the tracked step is reached by talking to them
+  // (dialogue/delivery) or when that giver still has not been briefed, so DRAX
+  // and VERA light up as soon as their mission becomes the active one.
+  const objectiveNpc = trackedGiver
+    && (objective.kind === 'dialogue'
+      || objective.kind === 'delivery'
+      || !mission.spokenNpcIds.includes(trackedGiver))
+    ? trackedGiver
+    : null
   const highlightedCore = objective.id === 'collect-prime-cores'
     ? SKYLINE_PRIME_CORE_VALUES.find((value) => !collectedCores.has(value)) ?? null
     : null
@@ -1102,10 +1124,18 @@ function SkylineRunnerScene({ paused, quality, profile, reducedMotion, input, lo
 
     const liveState = useSkylineRunnerStore.getState()
     if (!liveState.activeDialogue) {
-      let near: 'npc:lia' | 'npc:nilo' | 'beacon' | null = null
-      if (tupleDistance(next.position, SKYLINE_NPCS.lia.position) <= SKYLINE_WORLD_BOUNDS.npcInteractionRadius) near = 'npc:lia'
-      else if (tupleDistance(next.position, SKYLINE_NPCS.nilo.position) <= SKYLINE_WORLD_BOUNDS.npcInteractionRadius) near = 'npc:nilo'
-      else if (tupleDistance(next.position, SKYLINE_LOCATIONS.apexBeacon) <= 2.8) near = 'beacon'
+      let near: RunnerNearby = null
+      // Any mission giver on the open map is interactable; pick the closest one
+      // within reach so overlapping districts resolve to a single prompt.
+      let nearestNpcDistance = SKYLINE_WORLD_BOUNDS.npcInteractionRadius
+      for (const npcId of NPC_IDS) {
+        const distance = tupleDistance(next.position, SKYLINE_NPCS[npcId].position)
+        if (distance <= nearestNpcDistance) {
+          nearestNpcDistance = distance
+          near = `npc:${npcId}`
+        }
+      }
+      if (!near && tupleDistance(next.position, SKYLINE_LOCATIONS.apexBeacon) <= 2.8) near = 'beacon'
       liveState.setNearby(near)
     }
 
@@ -1362,7 +1392,7 @@ function SkylineRunnerScene({ paused, quality, profile, reducedMotion, input, lo
         activeEnemyHealth={enemyHealth}
         remainingEnemyFactors={enemyFactors}
         activeAnchorId={activeAnchor?.id ?? aimedAnchorId}
-        activeNpcId={objectiveNpc ?? (nearby?.startsWith('npc:') ? nearby.slice(4) as 'lia' | 'nilo' : null)}
+        activeNpcId={objectiveNpc ?? (nearby?.startsWith('npc:') ? nearby.slice(4) as SkylineNpcId : null)}
         highlightedCore={highlightedCore}
         beaconActive={mission.apexReached}
       />

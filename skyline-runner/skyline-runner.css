@@ -358,6 +358,23 @@
 .skyline-objective p { color: rgba(229, 245, 245, .5); font-size: 10px; line-height: 1.45; margin: 0; }
 .skyline-objective__progress { background: rgba(206, 241, 241, .12); height: 2px; margin-top: 12px; overflow: hidden; }
 .skyline-objective__progress i { background: var(--sr-cyan); box-shadow: 0 0 8px var(--sr-cyan); display: block; height: 100%; transition: width .4s ease; }
+.skyline-mission-list { display: flex; flex-direction: column; gap: 4px; list-style: none; margin: 12px 0 0; padding: 0; }
+.skyline-mission-list__item {
+  align-items: baseline;
+  border-left: 2px solid rgba(225, 246, 246, .16);
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  opacity: .55;
+  padding: 2px 0 2px 8px;
+}
+.skyline-mission-list__item b { font-size: 10px; font-weight: 650; letter-spacing: -.01em; }
+.skyline-mission-list__item small { color: rgba(229, 245, 245, .5); font: 650 7px 'JetBrains Mono', monospace; letter-spacing: .08em; white-space: nowrap; }
+.skyline-mission-list__item.started { opacity: .82; }
+.skyline-mission-list__item.active { border-left-color: var(--sr-amber); opacity: 1; }
+.skyline-mission-list__item.active b { color: var(--sr-amber); }
+.skyline-mission-list__item.done { border-left-color: var(--sr-cyan); opacity: .9; }
+.skyline-mission-list__item.done b { color: var(--sr-cyan); }
 
 .skyline-vitals {
   align-items: flex-end;
@@ -480,6 +497,7 @@
 .skyline-mission-track span { background: rgba(4, 14, 20, .65); border: 1px solid rgba(225, 246, 246, .17); height: 4px; width: 30px; }
 .skyline-mission-track span.done { background: var(--sr-cyan); border-color: var(--sr-cyan); }
 .skyline-mission-track span.active { background: var(--sr-amber); border-color: var(--sr-amber); box-shadow: 0 0 9px rgba(240, 174, 85, .5); }
+.skyline-mission-track span.started { background: rgba(240, 174, 85, .3); border-color: rgba(240, 174, 85, .55); }
 
 .skyline-prompt {
   background: rgba(4, 15, 22, .86);
@@ -517,6 +535,12 @@
 .skyline-portrait--nilo { background: #2b211d; }
 .skyline-portrait--nilo::before { background: #8a5945; }
 .skyline-portrait--nilo::after { background: #815c2b; }
+.skyline-portrait--vera { background: #16293b; }
+.skyline-portrait--vera::before { background: #c79a7a; }
+.skyline-portrait--vera::after { background: #2f5f86; }
+.skyline-portrait--drax { background: #2e1f1b; }
+.skyline-portrait--drax::before { background: #a9705a; }
+.skyline-portrait--drax::after { background: #8a3f2c; }
 .skyline-dialogue__copy > span { color: var(--sr-cyan); font: 800 7px 'JetBrains Mono', monospace; letter-spacing: .15em; }
 .skyline-dialogue__copy p { color: rgba(235, 248, 247, .76); font-size: 12px; line-height: 1.5; margin: 7px 0 0; }
 .skyline-dialogue button { align-self: end; background: transparent; border: 0; color: var(--sr-cyan); cursor: pointer; font: 800 8px 'JetBrains Mono', monospace; padding: 10px; }

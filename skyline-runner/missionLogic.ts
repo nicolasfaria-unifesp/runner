@@ -1,11 +1,15 @@
 import {
+  SKYLINE_MISSION_IDS,
+  SKYLINE_MISSIONS,
   SKYLINE_NPCS,
   SKYLINE_OBJECTIVES,
   SKYLINE_PRIME_CORE_VALUES,
   SKYLINE_SENTINEL_IDS,
   SKYLINE_SENTINELS,
+  type SkylineMissionId,
   type SkylineNpcId,
   type SkylineObjective,
+  type SkylineObjectiveId,
   type SkylinePrimeCoreValue,
   type SkylineSentinelId,
 } from './missionData'
@@ -217,4 +221,106 @@ export function getNextSkylineObjective(
     return SKYLINE_OBJECTIVES['activate-apex-beacon']
   }
   return SKYLINE_OBJECTIVES['mission-complete']
+}
+
+/**
+ * How far a single objective has advanced, independent of the global track.
+ * Used by the HUD to count steps within each mission.
+ */
+export function getObjectiveCompletion(
+  progress: SkylineMissionProgress,
+  objectiveId: SkylineObjectiveId,
+): { readonly current: number; readonly required: number; readonly done: boolean } {
+  const required = SKYLINE_OBJECTIVES[objectiveId].requiredCount
+  let current = 0
+  switch (objectiveId) {
+    case 'talk-to-lia':
+      current = progress.spokenNpcIds.includes('lia') ? 1 : 0
+      break
+    case 'collect-prime-cores':
+      current = progress.collectedPrimeCores.length
+      break
+    case 'deliver-cores-to-nilo':
+      current = progress.coresDeliveredToNilo ? 1 : 0
+      break
+    case 'defeat-composite-sentinels':
+      current = progress.defeatedSentinelIds.length
+      break
+    case 'reach-apex-spire':
+      current = progress.apexReached ? 1 : 0
+      break
+    case 'activate-apex-beacon':
+      current = progress.beaconActivated ? 1 : 0
+      break
+    case 'mission-complete':
+      current = 0
+      break
+  }
+  const cappedCurrent = Math.min(current, required)
+  return { current: cappedCurrent, required, done: required === 0 || cappedCurrent >= required }
+}
+
+export interface SkylineMissionState {
+  readonly id: SkylineMissionId
+  readonly title: string
+  readonly summary: string
+  readonly giver: SkylineNpcId
+  readonly district: string
+  /** Completed objective steps within this mission. */
+  readonly completedSteps: number
+  readonly totalSteps: number
+  readonly complete: boolean
+  /** True once the player has engaged the mission (any step started). */
+  readonly started: boolean
+}
+
+/**
+ * Projects the flat progress model onto the four discrete missions so the HUD
+ * can list them with per-mission step counts. A mission is "started" once any
+ * of its objectives has registered progress, and "complete" when all are met.
+ */
+export function getSkylineMissionStates(
+  progress: SkylineMissionProgress,
+): readonly SkylineMissionState[] {
+  return SKYLINE_MISSION_IDS.map((missionId) => {
+    const mission = SKYLINE_MISSIONS[missionId]
+    let completedSteps = 0
+    let anyProgress = false
+    for (const objectiveId of mission.objectiveIds) {
+      const completion = getObjectiveCompletion(progress, objectiveId)
+      if (completion.done) completedSteps += 1
+      if (completion.current > 0) anyProgress = true
+    }
+    const totalSteps = mission.objectiveIds.length
+    const complete = completedSteps >= totalSteps
+    return {
+      id: mission.id,
+      title: mission.title,
+      summary: mission.summary,
+      giver: mission.giver,
+      district: mission.district,
+      completedSteps,
+      totalSteps,
+      complete,
+      started: anyProgress || complete,
+    }
+  })
+}
+
+/**
+ * The mission that owns the currently-tracked objective, so the HUD can show a
+ * focused "active mission" header alongside the full list.
+ */
+export function getActiveSkylineMission(
+  progress: SkylineMissionProgress,
+): SkylineMissionState | null {
+  const objective = getNextSkylineObjective(progress)
+  const states = getSkylineMissionStates(progress)
+  if (objective.id === 'mission-complete') {
+    return states.find((state) => !state.complete) ?? null
+  }
+  const owner = SKYLINE_MISSION_IDS.find((missionId) =>
+    SKYLINE_MISSIONS[missionId].objectiveIds.includes(objective.id),
+  )
+  return owner ? states.find((state) => state.id === owner) ?? null : null
 }
