@@ -5,12 +5,17 @@ import type { QualityLevel } from '../../graphics/useQualitySettings'
 import QualityControl from '../../ui/QualityControl'
 import {
   SKYLINE_DIALOGUES,
-  SKYLINE_OBJECTIVE_ORDER,
+  SKYLINE_NPCS,
   SKYLINE_PRIME_CORE_VALUES,
   SKYLINE_SENTINELS,
+  type SkylineNpcId,
   type SkylinePrimeCoreValue,
 } from './missionData'
-import { getNextSkylineObjective } from './missionLogic'
+import {
+  getActiveSkylineMission,
+  getNextSkylineObjective,
+  getSkylineMissionStates,
+} from './missionLogic'
 import { PRIME_POWERS } from './primeCombat'
 import {
   getObjectiveProgress,
@@ -186,9 +191,9 @@ export default function SkylineRunnerHud({
   const clearToast = useSkylineRunnerStore((state) => state.clearToast)
   const objective = getNextSkylineObjective(mission)
   const progress = getObjectiveProgress(useSkylineRunnerStore.getState())
-  const objectiveIndex = objective.id === 'mission-complete'
-    ? SKYLINE_OBJECTIVE_ORDER.length
-    : SKYLINE_OBJECTIVE_ORDER.indexOf(objective.id)
+  const missionStates = getSkylineMissionStates(mission)
+  const activeMission = getActiveSkylineMission(mission)
+  const missionsComplete = missionStates.filter((state) => state.complete).length
   const [damageVisible, setDamageVisible] = useState(false)
   const isCoarse = useMemo(
     () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches,
@@ -211,14 +216,21 @@ export default function SkylineRunnerHud({
   const line = activeDialogue
     ? SKYLINE_DIALOGUES[activeDialogue.id].lines[activeDialogue.lineIndex]
     : null
-  const speaker = line?.speaker === 'lia' ? 'LIA' : line?.speaker === 'nilo' ? 'NILO' : 'RUNNER 07'
-  const prompt = nearby === 'npc:lia'
-    ? 'FALAR COM LIA'
-    : nearby === 'npc:nilo'
+  const speaker = line && line.speaker !== 'runner'
+    ? SKYLINE_NPCS[line.speaker].name
+    : 'RUNNER 07'
+  const nearbyNpcId: SkylineNpcId | null = nearby && nearby.startsWith('npc:')
+    ? (nearby.slice(4) as SkylineNpcId)
+    : null
+  const prompt = nearbyNpcId
+    ? nearbyNpcId === 'nilo'
       ? mission.coresDeliveredToNilo ? 'REVER PROTOCOLO COM NILO' : 'ENTREGAR A NILO'
-      : nearby === 'beacon'
-        ? 'ATIVAR FAROL'
-        : null
+      : mission.spokenNpcIds.includes(nearbyNpcId)
+        ? `REVER PLANO COM ${SKYLINE_NPCS[nearbyNpcId].name}`
+        : `FALAR COM ${SKYLINE_NPCS[nearbyNpcId].name}`
+    : nearby === 'beacon'
+      ? 'ATIVAR FAROL'
+      : null
   const enemy = telemetry.enemyTarget ? SKYLINE_SENTINELS[telemetry.enemyTarget] : null
   const remainingEnemyFactors = useSkylineRunnerStore((state) => state.enemyFactors)
   const enemyFactors = enemy ? remainingEnemyFactors[enemy.id] : []
@@ -243,10 +255,25 @@ export default function SkylineRunnerHud({
       </header>
 
       <aside className="skyline-objective" aria-live="polite">
-        <span>OBJETIVO {String(Math.min(objectiveIndex + 1, 6)).padStart(2, '0')} // 06</span>
-        <h2>{objective.title}</h2>
+        {activeMission ? (
+          <span>{activeMission.district} · MISSÃO {activeMission.completedSteps}/{activeMission.totalSteps}</span>
+        ) : (
+          <span>SKYLINE PROTOCOL · {missionsComplete}/{missionStates.length} MISSÕES</span>
+        )}
+        <h2>{activeMission ? activeMission.title : objective.title}</h2>
         <p>{objective.detail}{progress.required > 1 ? ` · ${progress.current}/${progress.required}` : ''}</p>
         <div className="skyline-objective__progress"><i style={{ width: `${progress.percent}%` }} /></div>
+        <ul className="skyline-mission-list">
+          {missionStates.map((state) => (
+            <li
+              key={state.id}
+              className={`skyline-mission-list__item${state.complete ? ' done' : activeMission?.id === state.id ? ' active' : state.started ? ' started' : ''}`}
+            >
+              <b>{state.title}</b>
+              <small>{SKYLINE_NPCS[state.giver].name} · {state.completedSteps}/{state.totalSteps}</small>
+            </li>
+          ))}
+        </ul>
       </aside>
 
       <aside className="skyline-vitals">
@@ -296,7 +323,9 @@ export default function SkylineRunnerHud({
 
       <div className="skyline-motion-state"><span>{telemetry.movement}</span><div><strong>{Math.round(telemetry.speed * 3.6)}</strong><small>KM/H</small></div></div>
       <div className="skyline-mission-track" aria-hidden="true">
-        {SKYLINE_OBJECTIVE_ORDER.map((id, index) => <span key={id} className={index < objectiveIndex ? 'done' : index === objectiveIndex ? 'active' : ''} />)}
+        {missionStates.map((state) => (
+          <span key={state.id} className={state.complete ? 'done' : activeMission?.id === state.id ? 'active' : state.started ? 'started' : ''} />
+        ))}
       </div>
 
       {prompt && !activeDialogue && <div className="skyline-prompt"><kbd>E</kbd>{prompt}</div>}

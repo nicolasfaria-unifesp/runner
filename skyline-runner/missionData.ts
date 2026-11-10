@@ -1,6 +1,6 @@
 export type SkylinePosition3D = readonly [x: number, y: number, z: number]
 
-export type SkylineNpcId = 'lia' | 'nilo'
+export type SkylineNpcId = 'lia' | 'nilo' | 'vera' | 'drax'
 
 export type SkylineSpeaker = SkylineNpcId | 'runner'
 
@@ -8,6 +8,8 @@ export type SkylineDialogueId =
   | 'lia-briefing'
   | 'lia-cores-online'
   | 'nilo-delivery'
+  | 'drax-briefing'
+  | 'vera-briefing'
   | 'apex-extraction'
 
 export const SKYLINE_PRIME_CORE_VALUES = [2, 3, 5] as const
@@ -41,6 +43,12 @@ export type SkylineObjectiveKind =
   | 'traversal'
   | 'extraction'
   | 'complete'
+
+export type SkylineMissionId =
+  | 'prime-cache'
+  | 'relay-handoff'
+  | 'quarantine-purge'
+  | 'apex-extraction'
 
 export interface SkylineDialogueLine {
   readonly id: string
@@ -86,6 +94,22 @@ export interface SkylineObjective {
   readonly requiredCount: number
 }
 
+/**
+ * A self-contained quest offered by one giver NPC somewhere on the open map.
+ * Missions can be discovered and advanced in any order by roaming; each one
+ * stays internally coherent through its own ordered list of objective ids.
+ */
+export interface SkylineMission {
+  readonly id: SkylineMissionId
+  readonly title: string
+  readonly summary: string
+  readonly giver: SkylineNpcId
+  /** Where the giver stands, surfaced so the map can flag the quest. */
+  readonly location: SkylinePosition3D
+  readonly district: string
+  readonly objectiveIds: readonly SkylineObjectiveId[]
+}
+
 export const SKYLINE_LOCATIONS = {
   runnerSpawn: [0, 1.1, 16] as SkylinePosition3D,
   apexSpire: [0, 13.2, -71] as SkylinePosition3D,
@@ -104,10 +128,26 @@ export const SKYLINE_NPCS: Readonly<Record<SkylineNpcId, SkylineNpc>> = {
   nilo: {
     id: 'nilo',
     name: 'NILO',
-    role: 'Engenheiro da torre intermediária',
-    position: [-2.4, 7.2, -28.5],
+    role: 'Engenheiro do relay oeste',
+    position: [-22, 1.1, 6],
     accent: '#f2c15c',
     dialogueIds: ['nilo-delivery', 'apex-extraction'],
+  },
+  vera: {
+    id: 'vera',
+    name: 'VERA',
+    role: 'Batedora do distrito leste',
+    position: [24, 1.1, 8],
+    accent: '#8bd0ff',
+    dialogueIds: ['vera-briefing', 'apex-extraction'],
+  },
+  drax: {
+    id: 'drax',
+    name: 'DRAX',
+    role: 'Vigia da quarentena norte',
+    position: [0, 1.1, -24],
+    accent: '#ed7c63',
+    dialogueIds: ['drax-briefing'],
   },
 }
 
@@ -118,19 +158,19 @@ export const SKYLINE_PRIME_CORES: Readonly<
     value: 2,
     label: 'Núcleo Binário',
     position: [4.8, 2.7, 2.5],
-    clue: 'O único primo par estabiliza a primeira ponte.',
+    clue: 'O único primo par repousa no pedestal da praça leste.',
   },
   3: {
     value: 3,
     label: 'Núcleo Tríade',
     position: [-4.6, 4.9, -8.5],
-    clue: 'Três pulsa acima do corredor de ventilação.',
+    clue: 'Três pulsa sobre o pedestal tríade, a oeste do arco.',
   },
   5: {
     value: 5,
     label: 'Núcleo Pentagonal',
     position: [3.2, 7.2, -20],
-    clue: 'Cinco abre a frequência da torre de Nilo.',
+    clue: 'Cinco brilha no pedestal pentagonal, rumo ao norte.',
   },
 }
 
@@ -176,12 +216,12 @@ export const SKYLINE_DIALOGUES: Readonly<
       {
         id: 'lia-briefing-01',
         speaker: 'lia',
-        text: 'Runner, a malha caiu. Só os núcleos 2, 3 e 5 religam a rota até a Agulha.',
+        text: 'Runner, a malha caiu. Os núcleos 2, 3 e 5 estão espalhados pelos pedestais da praça.',
       },
       {
         id: 'lia-briefing-02',
         speaker: 'runner',
-        text: 'Marco os três primos, cruzo os telhados e encontro Nilo na torre.',
+        text: 'Marco os três primos pela cidade e volto quando a tríade estiver completa.',
       },
     ],
   },
@@ -191,12 +231,12 @@ export const SKYLINE_DIALOGUES: Readonly<
       {
         id: 'lia-cores-online-01',
         speaker: 'lia',
-        text: 'Tríade confirmada. Nilo já abriu o elevador de manutenção.',
+        text: 'Tríade confirmada. Leve a carga ao Nilo, no relay oeste, para armar seus poderes.',
       },
       {
         id: 'lia-cores-online-02',
         speaker: 'runner',
-        text: 'Levo a carga até ele. Mantenha a rota limpa.',
+        text: 'A caminho do oeste. Depois cuido das Sentinelas e da Agulha.',
       },
     ],
   },
@@ -212,6 +252,36 @@ export const SKYLINE_DIALOGUES: Readonly<
         id: 'nilo-delivery-02',
         speaker: 'runner',
         text: 'Entendido: 4 pede dois disparos de 2; 9, dois de 3. Vou quebrar cada selo.',
+      },
+    ],
+  },
+  'drax-briefing': {
+    id: 'drax-briefing',
+    lines: [
+      {
+        id: 'drax-briefing-01',
+        speaker: 'drax',
+        text: 'Quatro Sentinelas compostas trancaram a quarentena norte: 4, 6, 9 e 10.',
+      },
+      {
+        id: 'drax-briefing-02',
+        speaker: 'runner',
+        text: 'Com o pulso primo armado eu fatoro cada uma e libero os pátios.',
+      },
+    ],
+  },
+  'vera-briefing': {
+    id: 'vera-briefing',
+    lines: [
+      {
+        id: 'vera-briefing-01',
+        speaker: 'vera',
+        text: 'Do leste eu vejo a Agulha Apex. Quando o circuito primo fechar, a rota até o topo abre.',
+      },
+      {
+        id: 'vera-briefing-02',
+        speaker: 'runner',
+        text: 'Subo a Agulha e aciono o farol assim que a cidade estiver segura.',
       },
     ],
   },
@@ -244,7 +314,7 @@ export const SKYLINE_OBJECTIVES: Readonly<
     id: 'talk-to-lia',
     kind: 'dialogue',
     title: 'Abra o canal com LIA',
-    detail: 'Encontre a operadora no terraço inicial e receba o protocolo.',
+    detail: 'Encontre a operadora na praça central e receba o protocolo.',
     targetPositions: [SKYLINE_NPCS.lia.position],
     requiredCount: 1,
   },
@@ -252,7 +322,7 @@ export const SKYLINE_OBJECTIVES: Readonly<
     id: 'collect-prime-cores',
     kind: 'collect',
     title: 'Recupere os núcleos 2, 3 e 5',
-    detail: 'Atravesse os telhados e reúna a tríade prima.',
+    detail: 'Vasculhe os pedestais da cidade e reúna a tríade prima.',
     targetPositions: SKYLINE_PRIME_CORE_VALUES.map(
       (value) => SKYLINE_PRIME_CORES[value].position,
     ),
@@ -262,7 +332,7 @@ export const SKYLINE_OBJECTIVES: Readonly<
     id: 'deliver-cores-to-nilo',
     kind: 'delivery',
     title: 'Entregue os núcleos a NILO',
-    detail: 'Leve a tríade ao engenheiro na torre intermediária.',
+    detail: 'Leve a tríade ao engenheiro no relay oeste e arme o pulso primo.',
     targetPositions: [SKYLINE_NPCS.nilo.position],
     requiredCount: 1,
   },
@@ -270,7 +340,7 @@ export const SKYLINE_OBJECTIVES: Readonly<
     id: 'defeat-composite-sentinels',
     kind: 'combat',
     title: 'Derrube as Sentinelas Compostas',
-    detail: 'Equipe 2, 3 ou 5 e rompa, um a um, os fatores de 4, 6, 9 e 10.',
+    detail: 'Fale com DRAX ao norte e rompa, um a um, os fatores de 4, 6, 9 e 10.',
     targetPositions: SKYLINE_SENTINEL_IDS.map(
       (id) => SKYLINE_SENTINELS[id].position,
     ),
@@ -280,7 +350,7 @@ export const SKYLINE_OBJECTIVES: Readonly<
     id: 'reach-apex-spire',
     kind: 'traversal',
     title: 'Alcance a Agulha Apex',
-    detail: 'Use a rota liberada e corra até o ponto mais alto da cidade.',
+    detail: 'Com a cidade segura, corra até o ponto mais alto do distrito norte.',
     targetPositions: [SKYLINE_LOCATIONS.apexSpire],
     requiredCount: 1,
   },
@@ -311,12 +381,71 @@ export const SKYLINE_OBJECTIVE_ORDER = [
   'activate-apex-beacon',
 ] as const satisfies readonly SkylineObjectiveId[]
 
+/**
+ * Four distinct missions spread across the open-world districts. Each has its
+ * own giver and location, so the player finds them by roaming rather than
+ * following one global chain. The objective ids still cover the whole protocol
+ * so the legacy HUD track keeps working.
+ */
+export const SKYLINE_MISSIONS: Readonly<
+  Record<SkylineMissionId, SkylineMission>
+> = {
+  'prime-cache': {
+    id: 'prime-cache',
+    title: 'Cache Primo',
+    summary: 'Abra o canal com LIA e recupere os núcleos 2, 3 e 5.',
+    giver: 'lia',
+    location: SKYLINE_NPCS.lia.position,
+    district: 'PRAÇA // AURORA',
+    objectiveIds: ['talk-to-lia', 'collect-prime-cores'],
+  },
+  'relay-handoff': {
+    id: 'relay-handoff',
+    title: 'Entrega no Relay',
+    summary: 'Leve a tríade a NILO no relay oeste para armar o pulso primo.',
+    giver: 'nilo',
+    location: SKYLINE_NPCS.nilo.position,
+    district: 'OESTE // RELAY',
+    objectiveIds: ['deliver-cores-to-nilo'],
+  },
+  'quarantine-purge': {
+    id: 'quarantine-purge',
+    title: 'Expurgo da Quarentena',
+    summary: 'Ajude DRAX a neutralizar as quatro Sentinelas compostas do norte.',
+    giver: 'drax',
+    location: SKYLINE_NPCS.drax.position,
+    district: 'NORTE // QUARENTENA',
+    objectiveIds: ['defeat-composite-sentinels'],
+  },
+  'apex-extraction': {
+    id: 'apex-extraction',
+    title: 'Extração Apex',
+    summary: 'Com VERA, alcance a Agulha Apex e acenda o farol de extração.',
+    giver: 'vera',
+    location: SKYLINE_NPCS.vera.position,
+    district: 'LESTE // TRÍADE',
+    objectiveIds: ['reach-apex-spire', 'activate-apex-beacon'],
+  },
+}
+
+export const SKYLINE_MISSION_IDS = [
+  'prime-cache',
+  'relay-handoff',
+  'quarantine-purge',
+  'apex-extraction',
+] as const satisfies readonly SkylineMissionId[]
+
+/**
+ * Aggregate campaign view. Kept for compatibility with consumers that still
+ * read a single mission descriptor; it now summarizes the multi-mission set.
+ */
 export const SKYLINE_MISSION = {
   id: 'prime-runner-skyline-protocol',
   title: 'Prime Runner: Skyline Protocol',
-  subtitle: 'Corra acima da cidade. Acenda o último farol primo.',
+  subtitle: 'Explore a cidade aberta. Acenda o último farol primo.',
   playerSpawn: SKYLINE_LOCATIONS.runnerSpawn,
   objectiveOrder: SKYLINE_OBJECTIVE_ORDER,
+  missionIds: SKYLINE_MISSION_IDS,
   finalObjectiveId: 'activate-apex-beacon',
   requiredPrimeCores: SKYLINE_PRIME_CORE_VALUES,
   sentinelIds: SKYLINE_SENTINEL_IDS,
