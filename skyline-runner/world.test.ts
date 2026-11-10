@@ -47,15 +47,15 @@ describe('skyline world', () => {
   it('keeps every major grapple transfer visible along the critical route', () => {
     const route = [
       { origin: { x: 0, y: 1.1, z: 8 }, anchorId: 'anchor-binary' },
-      { origin: { x: 18, y: 5.8, z: 0 }, anchorId: 'anchor-triad' },
-      { origin: { x: 28, y: 11.5, z: 6 }, anchorId: 'anchor-east-spire' },
-      { origin: { x: -18, y: 9.2, z: 0 }, anchorId: 'anchor-relay' },
-      { origin: { x: -32, y: 8.1, z: 4 }, anchorId: 'anchor-west-cooler' },
-      { origin: { x: -9, y: 7.2, z: -34 }, anchorId: 'anchor-four' },
+      { origin: { x: 22, y: 5.8, z: 3 }, anchorId: 'anchor-triad' },
+      { origin: { x: 40, y: 11.5, z: 5 }, anchorId: 'anchor-east-spire' },
+      { origin: { x: -28, y: 9.2, z: -3 }, anchorId: 'anchor-relay' },
+      { origin: { x: -40, y: 8.1, z: 3 }, anchorId: 'anchor-west-cooler' },
+      { origin: { x: -7, y: 7.2, z: -30 }, anchorId: 'anchor-four' },
       { origin: { x: 9, y: 8.7, z: -32 }, anchorId: 'anchor-six' },
-      { origin: { x: -11, y: 10.3, z: -44 }, anchorId: 'anchor-nine' },
-      { origin: { x: 11, y: 11.8, z: -46 }, anchorId: 'anchor-ten' },
-      { origin: { x: 9, y: 11.8, z: -50 }, anchorId: 'anchor-apex' },
+      { origin: { x: -11, y: 10.3, z: -45 }, anchorId: 'anchor-nine' },
+      { origin: { x: 11, y: 11.8, z: -47 }, anchorId: 'anchor-ten' },
+      { origin: { x: 0, y: 11.8, z: -56 }, anchorId: 'anchor-apex' },
     ] as const
 
     for (const step of route) {
@@ -85,5 +85,22 @@ describe('skyline world', () => {
   it('uses unique ids for colliders and anchors', () => {
     expect(new Set(SKYLINE_COLLIDERS.map(({ id }) => id)).size).toBe(SKYLINE_COLLIDERS.length)
     expect(new Set(SKYLINE_ANCHORS.map(({ id }) => id)).size).toBe(SKYLINE_ANCHORS.length)
+  })
+
+  it('never lets two building footprints overlap in the X/Z plane', () => {
+    for (let i = 0; i < SKYLINE_BUILDINGS.length; i += 1) {
+      for (let j = i + 1; j < SKYLINE_BUILDINGS.length; j += 1) {
+        const a = SKYLINE_BUILDINGS[i].bounds
+        const b = SKYLINE_BUILDINGS[j].bounds
+        const overlaps = a.min.x < b.max.x
+          && a.max.x > b.min.x
+          && a.min.z < b.max.z
+          && a.max.z > b.min.z
+        expect(
+          overlaps,
+          `${SKYLINE_BUILDINGS[i].id} overlaps ${SKYLINE_BUILDINGS[j].id}`,
+        ).toBe(false)
+      }
+    }
   })
 })
